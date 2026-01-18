@@ -4,24 +4,26 @@ import pandas as pd
 import plotly.express as px
 import time
 import random
-import requests
-import xml.etree.ElementTree as ET
 
 # --- 1. ตั้งค่าหน้าเว็บและ Session State ---
 st.set_page_config(page_title="AION Monitor Pro", page_icon="⚡", layout="wide")
 
+# สร้างตัวแปรจับเวลาในระบบ
 if 'last_run_time' not in st.session_state:
     st.session_state.last_run_time = 0
 
 # --- 2. CSS & UI/UX Design (Premium Thai Style) ---
 st.markdown("""
 <style>
+    /* Import Font: Prompt */
     @import url('https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap');
     
-    html, body, [class*="css"], button, input, select, textarea {
+    /* บังคับใช้ฟอนต์ Prompt ทุกส่วน */
+    html, body, [class*="css"], button, input, select, textarea, a {
         font-family: 'Prompt', sans-serif !important;
     }
     
+    /* แต่งกล่องคะแนน (Metric Card) */
     .metric-card {
         background-color: #ffffff;
         border: 1px solid #f0f0f0;
@@ -37,19 +39,39 @@ st.markdown("""
         border-color: #0575e6;
     }
     
+    /* แต่งกล่องผู้ชนะ (Winner) */
     .metric-winner {
         background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 100%);
         border: 2px solid #00acc1;
         color: #006064;
     }
 
+    /* แต่งปุ่มกด (Sidebar) */
     .stButton > button {
         width: 100%;
         border-radius: 8px;
         font-weight: 600;
         height: 50px;
     }
+    
+    /* แต่งปุ่ม Link (StLinkButton) */
+    a[kind="primary"] {
+        background-color: #ff4b4b;
+        color: white !important;
+        border-radius: 8px;
+        text-align: center;
+        padding: 10px;
+        font-weight: 600;
+        text-decoration: none;
+        display: block;
+        margin-top: 10px;
+    }
+    a[kind="primary"]:hover {
+        background-color: #ff2b2b;
+        border-color: #ff2b2b;
+    }
 
+    /* แต่งกล่องคำเตือน Cooldown */
     .cooldown-box {
         background-color: #ffebee;
         color: #c62828;
@@ -68,6 +90,7 @@ st.markdown("""
         100% { transform: scale(1); opacity: 1; }
     }
 
+    /* Footer */
     .footer {
         position: fixed;
         left: 0;
@@ -90,6 +113,7 @@ st.markdown("""
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def get_trends_data(keywords, timeframe, geo):
+    # เชื่อมต่อ Google Trends
     pytrends = TrendReq(hl='th-TH', tz=420, retries=3, backoff_factor=0.5, timeout=(10,25))
     result = {"graph": None, "related": None, "error": None, "average": {}}
     
@@ -116,33 +140,6 @@ def get_trends_data(keywords, timeframe, geo):
         
     return result
 
-# --- ฟังก์ชันใหม่: ดึงเทรนด์จาก RSS (แก้ปัญหาโดนบล็อก) ---
-@st.cache_data(ttl=1800) 
-def get_trends_from_rss():
-    # URL RSS Feed ของ Google Trends ประเทศไทย
-    url = "https://trends.google.com/trends/trendingsearches/daily/rss?geo=TH"
-    try:
-        response = requests.get(url, timeout=10)
-        if response.status_code == 200:
-            # แปลง XML เป็น Dataframe
-            root = ET.fromstring(response.content)
-            data = []
-            # Namespace ของ Google Trends
-            ns = {'ht': 'https://google.com/trends/trendingsearches/daily'}
-            
-            for item in root.findall('.//item'):
-                title = item.find('title').text
-                # ดึงยอด traffic (เช่น 50,000+)
-                traffic = item.find('ht:approx_traffic', ns).text
-                data.append({'คำค้นหา': title, 'ยอดค้นหา': traffic})
-            
-            df = pd.DataFrame(data)
-            return df.head(10), "📅 Daily Trends (จาก RSS)"
-        else:
-            return None, "Error: Google ไม่ตอบสนอง"
-    except Exception as e:
-        return None, f"Error: {str(e)}"
-
 # --- 4. Config & Presets ---
 provinces = {
     "ทั้งประเทศไทย (TH)": "TH",
@@ -158,9 +155,9 @@ provinces = {
 }
 
 timeframe_options = {
-    "30 วันที่ผ่านมา (วิเคราะห์ภาพรวม)": "today 1-m",
     "1 วันที่ผ่านมา (Monitor รายวัน)": "now 1-d",
     "7 วันที่ผ่านมา (ดูเทรนด์สัปดาห์)": "now 7-d",
+    "30 วันที่ผ่านมา (วิเคราะห์ภาพรวม)": "today 1-m",
     "90 วันที่ผ่านมา (รายไตรมาส)": "today 3-m"
 }
 
@@ -168,7 +165,7 @@ presets = {
     "1. City Car Battle (AION UT)": ["AION UT", "NETA V", "BYD Dolphin", "ORA Good Cat"],
     "2. Compact SUV Battle (AION V)": ["AION V", "BYD Atto 3", "MG ZS EV", "Omoda C5"],
     "3. Premium SUV (HYPTEC HT)": ["HYPTEC HT", "Deepal S07", "Tesla Model Y", "XPENG G6"],
-    "4. 🔥 เทรนด์ตลาด EV (ภาพรวม)": ["รถไฟฟ้า", "รถ EV", "ราคารถไฟฟ้า", "รถไฟฟ้าAION"],
+    "4. 🔥 เทรนด์ตลาด EV (ภาพรวม)": ["รถไฟฟ้า", "รถ EV", "ราคารถไฟฟ้า", "Motor Expo"],
     "5. เช็คโปรโมชั่น/ราคา (Buying Intent)": ["ราคา AION", "โปรโมชั่น AION", "AION ตารางผ่อน", "ส่วนลด AION"],
     "6. เช็คปัญหา (Objection Handling)": ["ปัญหา AION", "AION ดีไหม", "ศูนย์บริการ AION", "อะไหล่ AION"],
     "7. ⚔️ เปรียบเทียบแบรนด์ (Brand War)": ["AION", "BYD", "NETA", "MG", "TESLA"] 
@@ -225,19 +222,18 @@ if st.sidebar.button('🚀 ประมวลผลข้อมูล', type="pr
         st.session_state.last_run_time = current_time
         st.session_state.run_triggered = True
 
-# ปุ่มดู Trends Ranking (เปลี่ยนมาใช้ RSS Function)
-if st.sidebar.button("🔥 เช็คเทรนด์ฮิต (Top Search)"):
-    with st.spinner("กำลังดึงข้อมูล RSS Feed..."):
-        # เรียกฟังก์ชันใหม่ที่เสถียรกว่า
-        df_trend, source_type = get_trends_from_rss()
-        
-        st.sidebar.markdown(f"### 🇹🇭 {source_type}")
-        if df_trend is not None and not df_trend.empty:
-            st.sidebar.dataframe(df_trend, hide_index=True, use_container_width=True)
-        else:
-            st.sidebar.error("ไม่สามารถดึงข้อมูลได้ (Google RSS อาจขัดข้องชั่วคราว)")
+# --- 7. ส่วนลิ้งค์ออกภายนอก (แก้ปัญหา Error) ---
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 🔥 เมนูลัด (External Link)")
+# ใช้ st.link_button ของ Streamlit เพื่อเปิดแท็บใหม่
+st.sidebar.link_button(
+    "↗️ ดู 10 อันดับเทรนด์ฮิต (Google Trends)", 
+    "https://trends.google.co.th/trends/trendingsearches/daily?geo=TH&hl=th",
+    type="secondary" # หรือใช้ type="primary" ถ้าอยากให้เป็นสีแดง
+)
+st.sidebar.caption("💡 กดปุ่มเพื่อเปิดหน้า Google Trends ประเทศไทยโดยตรง (ข้อมูลแม่นยำ 100%)")
 
-# --- 7. Main Content Area ---
+# --- 8. Main Content Area ---
 st.title(f"📊 {selected_preset.split('(')[0]}")
 st.markdown(f"**พื้นที่:** {selected_province_name} | **เวลา:** {selected_time_name}")
 
