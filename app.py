@@ -155,9 +155,9 @@ provinces = {
 }
 
 timeframe_options = {
+    "30 วันที่ผ่านมา (วิเคราะห์ภาพรวม)": "today 1-m",
     "1 วันที่ผ่านมา (Monitor รายวัน)": "now 1-d",
     "7 วันที่ผ่านมา (ดูเทรนด์สัปดาห์)": "now 7-d",
-    "30 วันที่ผ่านมา (วิเคราะห์ภาพรวม)": "today 1-m",
     "90 วันที่ผ่านมา (รายไตรมาส)": "today 3-m"
 }
 
@@ -335,3 +335,4 @@ if 'run_triggered' in st.session_state and st.session_state.run_triggered:
 
 # --- Footer ---
 st.markdown("<div class='footer'>AION Intelligent Dashboard | Developed by <b>oofmakus</b></div>", unsafe_allow_html=True)
+
