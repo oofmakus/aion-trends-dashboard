@@ -143,14 +143,14 @@ def get_trends_ranking():
 provinces = {
     "ชลบุรี (Chonburi Focus)": "TH-20",
     "กรุงเทพฯ (Bangkok)": "TH-10",
-    "ทั้งประเทศไทย": "TH",
+    "ทั้งประเทศไทย (TH)": "TH",
     "ระยอง (Rayong)": "TH-21",
-    "ลำปาง (Lampang)": "TH-52",  # เพิ่มลำปางตามคำขอ
-    "เชียงใหม่": "TH-50",
-    "ขอนแก่น": "TH-40",
+    "ลำปาง (Lampang)": "TH-52",  
+    "เชียงใหม่ (Chiang Mai)": "TH-50",
+    "ขอนแก่น(Khon Kaen)": "TH-40",
     "โคราช (Korat)": "TH-30",
-    "ภูเก็ต": "TH-83",
-    "สงขลา": "TH-90"
+    "ภูเก็ต (Phuket)": "TH-83",
+    "สงขลา (Songkhla)": "TH-90"
 }
 
 timeframe_options = {
@@ -167,13 +167,13 @@ presets = {
     "4. 🔥 เทรนด์ตลาด EV (ภาพรวม)": ["รถไฟฟ้า", "รถ EV", "ราคารถไฟฟ้า", "Motor Expo"],
     "5. เช็คโปรโมชั่น/ราคา (Buying Intent)": ["ราคา AION", "โปรโมชั่น AION", "AION ตารางผ่อน", "ส่วนลด AION"],
     "6. เช็คปัญหา (Objection Handling)": ["ปัญหา AION", "AION ดีไหม", "ศูนย์บริการ AION", "อะไหล่ AION"],
-    "7. ⚔️ เปรียบเทียบแบรนด์ (Brand War)": ["AION", "BYD", "NETA", "MG", "TESLA"] # เพิ่มหัวข้อเปรียบเทียบแบรนด์
+    "7. ⚔️ เปรียบเทียบแบรนด์ (Brand War)": ["AION", "BYD", "NETA", "MG", "TESLA"] 
 }
 
 # --- 5. Sidebar Layout ---
 st.sidebar.image("https://cdn-icons-png.flaticon.com/512/3209/3209990.png", width=70)
-st.sidebar.markdown("### ⚡ AION War Room")
-st.sidebar.caption("Data Intelligence for Sales Team | By oofmakus")
+st.sidebar.markdown("### ⚡ AION CHONBURI War Room")
+st.sidebar.caption("Data Intelligence Treand for Sales Team | By oofmakus")
 
 # Tooltip คือคำอธิบายภาษาไทยเวลาเอาเมาส์ไปชี้
 selected_preset = st.sidebar.selectbox(
@@ -217,7 +217,7 @@ if st.sidebar.button('🚀 ประมวลผลข้อมูล', type="pr
         for i in range(wait_time, 0, -1):
             timer_placeholder.markdown(f"""
             <div class='cooldown-box'>
-                ⛔ ใจเย็นวัยรุ่น!<br>
+                ⛔ ใจเย็นวัยรุ่น!กดเร็วเกิน google จะบล็อค<br>
                 ติด Cooldown: <b>{i}</b> วินาที
             </div>
             """, unsafe_allow_html=True)
@@ -349,3 +349,4 @@ if 'run_triggered' in st.session_state and st.session_state.run_triggered:
 
 # --- Footer ---
 st.markdown("<div class='footer'>AION Intelligent Dashboard | Developed by <b>oofmakus</b></div>", unsafe_allow_html=True)
+
