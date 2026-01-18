@@ -140,7 +140,7 @@ presets = {
 # เปลี่ยน URL รูปให้เสถียรขึ้น
 st.sidebar.image("https://cdn-icons-png.flaticon.com/512/3209/3209990.png", width=70)
 st.sidebar.markdown("## ⚡ AION War Room")
-st.sidebar.caption("Data Intelligence for Sales Team")
+st.sidebar.caption("Data GOOGLE TREND Intelligence for Sales Team By OOfmakus")
 
 selected_preset = st.sidebar.selectbox("🎯 เลือกสมรภูมิ (Segment):", list(presets.keys()))
 kw_list = presets[selected_preset]
@@ -285,3 +285,4 @@ if 'run_triggered' in st.session_state and st.session_state.run_triggered:
 
 # --- Footer Credits ---
 st.markdown("<div class='footer'>Developed by oofmakus</div>", unsafe_allow_html=True)
+
