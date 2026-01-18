@@ -6,30 +6,38 @@ import time
 import random
 
 # ตั้งค่าหน้าเว็บ
-st.set_page_config(page_title="AION Monitor Pro", page_icon="⚡", layout="wide")
+st.set_page_config(page_title="AION Chonburi War Room", page_icon="⚡", layout="wide")
 
-# --- ฟังก์ชันดึงข้อมูล (หัวใจสำคัญ: ใส่ Cache ไว้ตรงนี้) ---
-# ttl=3600 หมายถึง ให้จำข้อมูลไว้ 1 ชั่วโมง (3600 วินาที) ถ้าค้นคำเดิมใน 1 ชม. จะไม่ยิง Google ใหม่
+# --- CSS ปรับแต่งให้สวยงาม ---
+st.markdown("""
+<style>
+    .metric-card {background-color: #f0f2f6; padding: 15px; border-radius: 10px; text-align: center;}
+    h1 {color: #1E88E5;}
+</style>
+""", unsafe_allow_html=True)
+
+# --- ฟังก์ชันดึงข้อมูล (Cache 1 ชั่วโมง) ---
 @st.cache_data(ttl=3600, show_spinner=False)
 def get_trends_data(keywords, timeframe, geo):
-    # เชื่อมต่อ Google Trends (ลด Timeout ลงเพื่อไม่ให้หน้าจอค้างนานถ้าเน็ตหลุด)
     pytrends = TrendReq(hl='th-TH', tz=420, retries=2, backoff_factor=0.5, timeout=(10,25))
-    
-    result = {"graph": None, "related": None, "error": None}
+    result = {"graph": None, "related": None, "error": None, "average": {}}
     
     try:
-        # สร้าง Payload
         pytrends.build_payload(keywords, cat=0, timeframe=timeframe, geo=geo)
         
-        # 1. ดึงกราฟ
+        # 1. กราฟ
         data = pytrends.interest_over_time()
         if not data.empty:
             data = data.drop(labels=['isPartial'], axis=1, errors='ignore')
             result["graph"] = data
+            # คำนวณค่าเฉลี่ยความสนใจ
+            for kw in keywords:
+                if kw in data.columns:
+                    result["average"][kw] = round(data[kw].mean(), 1)
             
-        # 2. ดึง Insight (ถ้า Timeframe ไม่ใช่รายชั่วโมง)
+        # 2. Insight
         if not ("now" in timeframe and "H" in timeframe):
-            time.sleep(random.uniform(1, 2)) # พักนิดนึงก่อนดึงส่วนที่ 2
+            time.sleep(random.uniform(1, 2))
             related = pytrends.related_queries()
             result["related"] = related
             
@@ -38,118 +46,113 @@ def get_trends_data(keywords, timeframe, geo):
         
     return result
 
-# --- ส่วนตั้งค่า (Config) ---
+# --- Config & Presets (ปรับตามยอดขายจริงของคุณ) ---
 provinces = {
+    "ชลบุรี (Chonburi Focus)": "TH-20",
     "ทั้งประเทศไทย": "TH",
-    "ชลบุรี (Chonburi)": "TH-20",
-    "กรุงเทพฯ (Bangkok)": "TH-10",
     "ระยอง (Rayong)": "TH-21",
-    "สมุทรปราการ": "TH-11",
-    "เชียงใหม่": "TH-50",
-    "ภูเก็ต": "TH-83",
-    "ขอนแก่น": "TH-40",
-    "นครราชสีมา": "TH-30"
+    "กรุงเทพฯ": "TH-10"
 }
 
 timeframe_options = {
-    "1 วันที่ผ่านมา": "now 1-d",
-    "7 วันที่ผ่านมา": "now 7-d",
-    "30 วันที่ผ่านมา": "today 1-m",
-    "90 วันที่ผ่านมา": "today 3-m",
-    "12 เดือนที่ผ่านมา": "today 12-m",
-    "1 ชั่วโมงที่ผ่านมา (ไม่แนะนำ-เสี่ยงจอขาว)": "now 1-H",
-    "4 ชั่วโมงที่ผ่านมา": "now 4-H"
+    "1 วันที่ผ่านมา (Monitor รายวัน)": "now 1-d",
+    "7 วันที่ผ่านมา (ดูเทรนด์สัปดาห์)": "now 7-d",
+    "30 วันที่ผ่านมา (วิเคราะห์ภาพรวม)": "today 1-m",
+    "90 วันที่ผ่านมา (รายไตรมาส)": "today 3-m"
 }
 
+# จัดกลุ่มตามรุ่นรถที่คุณขายจริง
 presets = {
-    "1. กำหนดเอง (พิมพ์ใหม่)": [],
-    "2. AION vs คู่แข่งหลัก": ["AION", "BYD", "DEEPAL", "MG", "OMODA"],
-    "3. เทียบรุ่นเล็ก (AION UT vs Dolphin)": ["AION UT", "BYD Dolphin", "ORA Good Cat", "MG4" ],
-    "4. เทียบรุ่นใหญ่ (AION V vs Atto 3)": ["AION V", "BYD Atto 3","jaecoo 5"],
-    "5. ทีม AION ชลบุรี": ["AION Service ", "AION Service", "ศูนย์ AION"],
+    "1. City Car Battle (AION UT)": ["AION UT", "NETA V", "BYD Dolphin", "ORA Good Cat"],
+    "2. Compact SUV Battle (AION V)": ["AION V", "BYD Atto 3", "MG ZS EV", "Omoda C5"],
+    "3. Premium SUV (HYPTEC HT)": ["HYPTEC HT", "Deepal S07", "Tesla Model Y", "XPENG G6"],
+    "4. เช็คโปรโมชั่น/ราคา (Buying Intent)": ["ราคา AION", "โปรโมชั่น AION", "AION ตารางผ่อน", "ส่วนลด AION"],
+    "5. เช็คปัญหา (Objection Handling)": ["ปัญหา AION", "AION ดีไหม", "ศูนย์บริการ AION", "อะไหล่ AION"]
 }
 
 # --- Sidebar ---
-st.sidebar.title("⚡ AION War Room")
+st.sidebar.image("https://img.icons8.com/color/96/electric-vehicle.png", width=50)
+st.sidebar.title("⚡ AION Monitor")
+st.sidebar.caption("Support Data for Sales Team")
 
-selected_preset = st.sidebar.selectbox("เลือกชุดคำค้นหา:", list(presets.keys()))
+selected_preset = st.sidebar.selectbox("🎯 เลือกสมรภูมิ (Segment):", list(presets.keys()))
+kw_list = presets[selected_preset]
 
-if selected_preset == "1. กำหนดเอง (พิมพ์ใหม่)":
-    if 'custom_kw' not in st.session_state:
-        st.session_state.custom_kw = "AION, BYD"
-    user_kw = st.sidebar.text_input("พิมพ์คำค้นหา (คั่น ,)", st.session_state.custom_kw)
-    st.session_state.custom_kw = user_kw 
-    kw_list = [x.strip() for x in user_kw.split(',')]
-else:
-    kw_list = presets[selected_preset]
-    st.sidebar.info(f"คำค้นหา: {', '.join(kw_list)}")
+# Option เสริม: ให้ผู้ใช้พิมพ์เพิ่มเองได้
+add_on = st.sidebar.text_input("➕ เพิ่มคำค้นหาคู่แข่ง (ถ้ามี):", "")
+if add_on:
+    kw_list.append(add_on)
 
-selected_province_name = st.sidebar.selectbox("เลือกพื้นที่:", list(provinces.keys()))
+selected_province_name = st.sidebar.selectbox("📍 พื้นที่:", list(provinces.keys()))
 geo_code = provinces[selected_province_name]
 
-selected_time_name = st.sidebar.selectbox("ช่วงเวลา:", list(timeframe_options.keys()))
+selected_time_name = st.sidebar.selectbox("⏳ ช่วงเวลา:", list(timeframe_options.keys()))
 timeframe_code = timeframe_options[selected_time_name]
 
-run_btn = st.sidebar.button('🚀 วิเคราะห์ข้อมูล', type="primary")
+run_btn = st.sidebar.button('🚀 ประมวลผลข้อมูล', type="primary")
 
 # --- Main Content ---
-st.title(f"📈 Trends: {selected_province_name}")
-st.caption(f"ช่วงเวลา: {selected_time_name}")
+st.title(f"📊 {selected_preset.split('(')[0]}")
+st.markdown(f"**พื้นที่:** {selected_province_name} | **เวลา:** {selected_time_name}")
 
 if run_btn:
-    with st.spinner('กำลังดึงข้อมูล (อาจใช้เวลา 5-10 วินาที)...'):
-        # เรียกใช้ฟังก์ชันที่มี Cache (ถ้าเคยค้นแล้ว มันจะคืนค่าทันที ไม่ต้องรอนาน)
+    with st.spinner('🤖 AI กำลังวิเคราะห์ข้อมูลคู่แข่ง...'):
         results = get_trends_data(kw_list, timeframe_code, geo_code)
         
-        # ตรวจสอบ Error
         if results["error"]:
             if "429" in results["error"]:
-                st.warning("⚠️ ระบบ Google กำลังยุ่ง (Too Many Requests) - ข้อมูลอาจจะมาช้าหรือมาไม่ครบ กรุณารอสัก 1 นาทีแล้วกดใหม่")
+                st.warning("⚠️ Google Trends ทำงานหนักเกินไป (Rate Limit) - กรุณารอสัก 1-2 นาที")
             else:
-                st.error(f"เกิดข้อผิดพลาด: {results['error']}")
+                st.error(f"Error: {results['error']}")
         
-        # แสดงกราฟ
-        if results["graph"] is not None:
+        elif results["graph"] is not None:
+            # --- 1. ส่วนสรุปตัวเลข (Metrics) ---
+            avg_data = results["average"]
+            if avg_data:
+                st.subheader("🏆 คะแนนความนิยมเฉลี่ย (0-100)")
+                cols = st.columns(len(kw_list))
+                # หาค่าสูงสุดเพื่อไฮไลท์ผู้ชนะ
+                winner = max(avg_data, key=avg_data.get)
+                
+                for i, (key, val) in enumerate(avg_data.items()):
+                    with cols[i]:
+                        if key == winner:
+                            st.markdown(f"<div class='metric-card' style='border: 2px solid #2ecc71;'>🥇 <b>{key}</b><br><h2>{val}</h2></div>", unsafe_allow_html=True)
+                        else:
+                            st.markdown(f"<div class='metric-card'><b>{key}</b><br><h3>{val}</h3></div>", unsafe_allow_html=True)
+            
+            st.markdown("---")
+
+            # --- 2. กราฟเส้น ---
             df = results["graph"]
             fig = px.line(df, x=df.index, y=kw_list, 
-                          title=f"Trend ใน {selected_province_name}",
-                          labels={'value': 'ความสนใจ', 'date': 'เวลา', 'variable': 'คำค้นหา'})
+                          title=f"📈 แนวโน้มการค้นหา: {', '.join(kw_list)}",
+                          template="plotly_white",
+                          labels={'value': 'Search Volume', 'date': 'Date', 'variable': 'Car Model'})
+            # ปรับเส้นให้หนาขึ้น
+            fig.update_traces(line=dict(width=3))
             st.plotly_chart(fig, use_container_width=True)
             
-            with st.expander("ดูข้อมูลดิบ (Table)"):
-                st.dataframe(df.sort_index(ascending=False))
-        elif not results["error"]:
-            st.warning("ไม่พบข้อมูลกราฟ (ปริมาณการค้นหาน้อยเกินไป)")
+        else:
+            st.warning("ไม่พบข้อมูลกราฟในช่วงเวลานี้")
 
-        # แสดง Insight
+        # --- 3. Insight เจาะลึก ---
         st.markdown("---")
-        st.subheader("🔍 คำค้นหาที่เกี่ยวข้อง")
+        st.subheader("🔍 เจาะลึกพฤติกรรมลูกค้า (Related Queries)")
         
         if results["related"]:
             related = results["related"]
             cols = st.columns(len(kw_list))
             for i, kw in enumerate(kw_list):
                 with cols[i]:
-                    st.markdown(f"**{kw}**")
+                    st.info(f"เกี่ยวกับ: {kw}")
                     if kw in related and related[kw]:
-                        top = related[kw]['top']
                         rising = related[kw]['rising']
-                        
-                        tab1, tab2 = st.tabs(["มาแรง 🔥", "ยอดนิยม ⭐"])
-                        with tab1:
-                            if rising is not None:
-                                st.dataframe(rising.head(5), hide_index=True)
-                            else:
-                                st.caption("ไม่มีข้อมูล")
-                        with tab2:
-                            if top is not None:
-                                st.dataframe(top.head(5), hide_index=True)
-                            else:
-                                st.caption("ไม่มีข้อมูล")
+                        if rising is not None:
+                            st.dataframe(rising.head(5)[['query', 'value']], hide_index=True)
+                        else:
+                            st.caption("- ไม่มีเทรนด์พุ่งแรง -")
                     else:
-                        st.caption("-")
+                        st.caption("- ไม่มีข้อมูล -")
         else:
-            if "now" in timeframe_code and "H" in timeframe_code:
-                st.info("💡 โหมดรายชั่วโมง Google จะไม่แสดง Insight คำที่เกี่ยวข้อง")
-            elif not results["error"]:
-                 st.info("Google ไม่ส่งข้อมูล Insight กลับมา (อาจเพราะค้นหาเจาะจงเกินไป)")
+             st.info("💡 หมายเหตุ: Google ไม่แสดง Insight สำหรับคำค้นหาที่มีปริมาณน้อย หรือช่วงเวลาสั้นเกินไป")
