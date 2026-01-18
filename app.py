@@ -8,61 +8,80 @@ import random
 # --- 1. ตั้งค่าหน้าเว็บและ Session State ---
 st.set_page_config(page_title="AION Monitor Pro", page_icon="⚡", layout="wide")
 
-# สร้างตัวแปรจับเวลาในระบบ ถ้ายังไม่มี
+# สร้างตัวแปรจับเวลาในระบบ
 if 'last_run_time' not in st.session_state:
     st.session_state.last_run_time = 0
 
-# --- 2. CSS & UI/UX Design (แต่งสวย) ---
+# --- 2. CSS & UI/UX Design (Premium Thai Style) ---
 st.markdown("""
 <style>
-    /* เปลี่ยน Font และ Theme หลัก */
-    @import url('https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600&display=swap');
+    /* Import Font: Prompt */
+    @import url('https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap');
     
-    html, body, [class*="css"]  {
-        font-family: 'Prompt', sans-serif;
+    /* บังคับใช้ฟอนต์ Prompt ทุกส่วน */
+    html, body, [class*="css"], button, input, select, textarea {
+        font-family: 'Prompt', sans-serif !important;
     }
     
-    /* แต่งกล่อง Metric (คะแนน) */
+    /* แต่งกล่องคะแนน (Metric Card) */
     .metric-card {
         background-color: #ffffff;
-        border: 1px solid #e0e0e0;
+        border: 1px solid #f0f0f0;
         padding: 20px;
-        border-radius: 15px;
+        border-radius: 12px;
         text-align: center;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        transition: transform 0.2s;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+        transition: all 0.3s ease;
     }
     .metric-card:hover {
         transform: translateY(-5px);
-        box-shadow: 0 10px 15px rgba(0,0,0,0.1);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+        border-color: #0575e6;
     }
     
-    /* แต่งกล่องผู้ชนะ (สีเขียว) */
+    /* แต่งกล่องผู้ชนะ (Winner) */
     .metric-winner {
-        background: linear-gradient(135deg, #d4fc79 0%, #96e6a1 100%);
-        border: none;
-        color: #1b5e20;
+        background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 100%);
+        border: 2px solid #00acc1;
+        color: #006064;
     }
 
-    /* แต่ง Footer */
+    /* แต่งปุ่มกด (Sidebar) */
+    .stButton > button {
+        width: 100%;
+        border-radius: 8px;
+        font-weight: 600;
+    }
+
+    /* แต่งกล่องคำเตือน Cooldown */
+    .cooldown-box {
+        background-color: #ffebee;
+        color: #c62828;
+        padding: 15px;
+        border-radius: 8px;
+        border: 1px solid #ef5350;
+        text-align: center;
+        font-weight: 600;
+        margin-bottom: 10px;
+    }
+
+    /* Footer */
     .footer {
         position: fixed;
         left: 0;
         bottom: 0;
         width: 100%;
-        background-color: #f8f9fa;
-        color: #6c757d;
+        background-color: #ffffff;
+        color: #9e9e9e;
         text-align: center;
-        padding: 10px;
-        font-size: 12px;
-        border-top: 1px solid #dee2e6;
-        z-index: 999;
+        padding: 8px;
+        font-size: 11px;
+        border-top: 1px solid #eeeeee;
+        z-index: 9999;
     }
     
-    /* ปรับแต่งหัวข้อ */
-    h1, h2, h3 {
-        color: #0D47A1;
-    }
+    /* Headers */
+    h1, h2, h3 { color: #1565C0; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -86,7 +105,7 @@ def get_trends_data(keywords, timeframe, geo):
                 if kw in data.columns:
                     result["average"][kw] = round(data[kw].mean(), 1)
             
-        # 2. Insight (Related Queries)
+        # 2. Insight
         if not ("now" in timeframe and "H" in timeframe):
             time.sleep(random.uniform(1, 1.5)) 
             related = pytrends.related_queries()
@@ -97,15 +116,21 @@ def get_trends_data(keywords, timeframe, geo):
         
     return result
 
-@st.cache_data(ttl=1800) # Cache 30 นาที
-def get_realtime_trends():
+# ฟังก์ชันดึงเทรนด์ (แก้ปัญหา Realtime ไม่ขึ้น)
+@st.cache_data(ttl=1800) 
+def get_trends_ranking():
+    pytrends = TrendReq(hl='th-TH', tz=420)
     try:
-        pytrends = TrendReq(hl='th-TH', tz=420)
-        # ใช้ Realtime Trends แทน Daily เพราะเสถียรกว่าในไทย
+        # ลองดึง Realtime ก่อน
         df = pytrends.realtime_trending_searches(pn='TH')
-        return df.head(10)
+        return df.head(10), "🔥 Realtime (ล่าสุด)"
     except:
-        return None
+        try:
+            # ถ้า Realtime พัง ให้ดึง Daily แทน
+            df = pytrends.trending_searches(pn='thailand')
+            return df.head(10), "📅 Daily (ประจำวัน)"
+        except:
+            return None, "Error"
 
 # --- 4. Config & Presets ---
 provinces = {
@@ -113,11 +138,11 @@ provinces = {
     "กรุงเทพฯ (Bangkok)": "TH-10",
     "ทั้งประเทศไทย": "TH",
     "ระยอง (Rayong)": "TH-21",
-    "เชียงใหม่ (Chiang Mai)": "TH-50",
-    "ขอนแก่น (Khon Kaen)": "TH-40",
-    "นครราชสีมา (Korat)": "TH-30",
-    "ภูเก็ต (Phuket)": "TH-83",
-    "สงขลา (Hatyai)": "TH-90"
+    "เชียงใหม่": "TH-50",
+    "ขอนแก่น": "TH-40",
+    "โคราช (Korat)": "TH-30",
+    "ภูเก็ต": "TH-83",
+    "สงขลา": "TH-90"
 }
 
 timeframe_options = {
@@ -137,15 +162,23 @@ presets = {
 }
 
 # --- 5. Sidebar Layout ---
-# เปลี่ยน URL รูปให้เสถียรขึ้น
 st.sidebar.image("https://cdn-icons-png.flaticon.com/512/3209/3209990.png", width=70)
-st.sidebar.markdown("## ⚡ AION War Room")
-st.sidebar.caption("Data GOOGLE TREND Intelligence for Sales Team By OOfmakus")
+st.sidebar.markdown("### ⚡ AION War Room")
+st.sidebar.caption("Data Intelligence for Sales Team | By oofmakus")
 
-selected_preset = st.sidebar.selectbox("🎯 เลือกสมรภูมิ (Segment):", list(presets.keys()))
+# Tooltip คือคำอธิบายภาษาไทยเวลาเอาเมาส์ไปชี้
+selected_preset = st.sidebar.selectbox(
+    "🎯 เลือกกลุ่มเปรียบเทียบ:", 
+    list(presets.keys()),
+    help="เลือกกลุ่มรถยนต์ที่ต้องการเปรียบเทียบ หรือเลือกดูเทรนด์ราคา/ปัญหา"
+)
 kw_list = presets[selected_preset]
 
-add_on = st.sidebar.text_input("➕ เพิ่มคำค้นหาคู่แข่ง (ถ้ามี):", "")
+add_on = st.sidebar.text_input(
+    "➕ เพิ่มคำค้นหาคู่แข่ง (ถ้ามี):", 
+    "",
+    help="พิมพ์ชื่อแบรนด์หรือรุ่นรถอื่นที่ต้องการเทียบเพิ่ม"
+)
 if add_on:
     kw_list.append(add_on)
 
@@ -157,119 +190,129 @@ timeframe_code = timeframe_options[selected_time_name]
 
 st.sidebar.markdown("---")
 
-# --- 6. ปุ่ม Run พร้อมระบบ Cooldown (สำคัญ!) ---
-# เช็คเวลาก่อน
+# --- 6. ปุ่ม Run พร้อมระบบ Cooldown ---
 current_time = time.time()
 time_diff = current_time - st.session_state.last_run_time
-cooldown_seconds = 15 # บังคับรอ 15 วินาที
+cooldown_seconds = 20 # เพิ่มเวลาพักเป็น 20 วิ เพื่อความชัวร์
 
+# ปุ่มกด
 if st.sidebar.button('🚀 ประมวลผลข้อมูล', type="primary", use_container_width=True):
     if time_diff < cooldown_seconds:
-        # ถ้ารีบกดเกินไป
+        # ถ้ารีบกดเกินไป แสดง Error Box พร้อมเวลานับถอยหลัง
         wait_time = int(cooldown_seconds - time_diff)
-        st.sidebar.error(f"⏳ ใจเย็นวัยรุ่น! กรุณารออีก {wait_time} วินาที")
+        st.sidebar.markdown(f"""
+        <div class='cooldown-box'>
+            ⛔ ใจเย็นวัยรุ่น!<br>
+            ติด Cooldown: รออีก {wait_time} วินาที
+        </div>
+        """, unsafe_allow_html=True)
     else:
-        # ถ้าเวลาผ่านไปนานพอแล้ว ให้ทำงานได้
-        st.session_state.last_run_time = current_time # อัปเดตเวลาล่าสุด
-        st.session_state.run_triggered = True # ส่งสัญญาณให้ Main Content ทำงาน
+        # ผ่าน
+        st.session_state.last_run_time = current_time
+        st.session_state.run_triggered = True
 
-# ปุ่มดู Daily Trends
-if st.sidebar.button("🔥 เช็คเทรนด์ฮิตวันนี้ (Realtime)"):
-    with st.spinner("กำลังดึงข้อมูล Realtime..."):
-        daily_trends = get_realtime_trends()
-        st.sidebar.markdown("### 🇹🇭 คำค้นหามาแรง (Realtime)")
-        if daily_trends is not None and not daily_trends.empty:
-            # แต่งตารางให้สวย
-            st.sidebar.dataframe(daily_trends.head(10), hide_index=True, use_container_width=True)
+# ปุ่มดู Trends Ranking (แก้บั๊กแล้ว)
+if st.sidebar.button("🔥 เช็คเทรนด์ฮิต (Top Search)"):
+    with st.spinner("กำลังดึงข้อมูล..."):
+        df_trend, source_type = get_trends_ranking()
+        
+        st.sidebar.markdown(f"### 🇹🇭 {source_type}")
+        if df_trend is not None and not df_trend.empty:
+            # เปลี่ยนชื่อหัวตารางให้น่าอ่าน
+            df_trend.columns = ['คำค้นหา'] if len(df_trend.columns) == 1 else df_trend.columns
+            st.sidebar.dataframe(df_trend, hide_index=True, use_container_width=True)
         else:
-            st.sidebar.warning("ขณะนี้ Google ไม่ส่งข้อมูล Realtime (ลองกดใหม่ในอีก 5 นาที)")
+            st.sidebar.warning("ไม่สามารถดึงข้อมูลได้ในขณะนี้")
 
 # --- 7. Main Content Area ---
 st.title(f"📊 {selected_preset.split('(')[0]}")
 st.markdown(f"**พื้นที่:** {selected_province_name} | **เวลา:** {selected_time_name}")
 
-# ตรวจสอบว่ามีการกดปุ่ม Run หรือยัง
+# ส่วนอธิบายการใช้งาน (Manual) แบบย่อ
+with st.expander("ℹ️ คำแนะนำการอ่านค่า (คลิกเพื่ออ่าน)"):
+    st.markdown("""
+    * **Score (0-100):** ไม่ใช่จำนวนคนค้นหา แต่เป็น "ดัชนีความนิยม" เทียบกัน (ใครได้ 100 คือชนะขาดลอย)
+    * **กราฟ:** ถ้ากราฟพุ่งสูง แสดงว่าช่วงนั้นมีการค้นหาเยอะผิดปกติ (อาจมีข่าว หรือโปรโมชั่น)
+    * **Insight:** คือคำที่คนมักจะพิมพ์ต่อท้าย เช่น ถ้าค้น "AION" แล้วมีคำว่า "ราคา" ตามมาเยอะ แปลว่าลูกค้าสนใจซื้อ
+    """)
+
+# ตรวจสอบ Trigger
 if 'run_triggered' in st.session_state and st.session_state.run_triggered:
-    
-    # รีเซ็ต Trigger เพื่อไม่ให้รันซ้ำเอง
     st.session_state.run_triggered = False 
 
-    with st.spinner('🤖 AI กำลังวิเคราะห์ข้อมูลคู่แข่ง...'):
+    with st.spinner('🤖 AI กำลังเจาะข้อมูลคู่แข่ง...'):
         results = get_trends_data(kw_list, timeframe_code, geo_code)
         
         if results["error"]:
             if "429" in results["error"]:
-                st.error("⚠️ Google Trends ทำงานหนักเกินไป (Rate Limit) - กรุณารอสัก 1-2 นาทีแล้วค่อยกดใหม่")
+                st.error("⚠️ Google ทำงานหนักเกินไป (Rate Limit) - กรุณารอสัก 1-2 นาที แล้วค่อยกดใหม่")
             else:
-                st.error(f"Error: {results['error']}")
+                st.error(f"เกิดข้อผิดพลาด: {results['error']}")
         
         elif results["graph"] is not None:
-            # --- A. ส่วนสรุปตัวเลข (Metrics Card UI) ---
+            # --- A. Score Cards ---
             avg_data = results["average"]
             if avg_data:
-                st.subheader("🏆 คะแนนความนิยมเฉลี่ย (Score 0-100)")
+                st.subheader("🏆 คะแนนความนิยมเฉลี่ย (Market Share Index)")
                 cols = st.columns(len(kw_list))
                 winner = max(avg_data, key=avg_data.get) if avg_data else None
                 
                 for i, (key, val) in enumerate(avg_data.items()):
                     with cols[i]:
                         if key == winner:
-                            # การ์ดผู้ชนะ
                             st.markdown(f"""
                             <div class='metric-card metric-winner'>
-                                <div style='font-size:30px;'>🥇</div>
-                                <b>{key}</b><br>
-                                <h1 style='margin:0; color:#1b5e20;'>{val}</h1>
+                                <div style='font-size:24px;'>🥇 ผู้นำตลาด</div>
+                                <h3 style='margin:5px 0;'>{key}</h3>
+                                <h1 style='margin:0; color:#006064;'>{val}</h1>
                             </div>
                             """, unsafe_allow_html=True)
                         else:
-                            # การ์ดธรรมดา
                             st.markdown(f"""
                             <div class='metric-card'>
-                                <div style='height:30px;'></div>
-                                <b>{key}</b><br>
-                                <h2 style='margin:0; color:#555;'>{val}</h2>
+                                <div style='height:24px;'></div>
+                                <h3 style='margin:5px 0; color:#555;'>{key}</h3>
+                                <h2 style='margin:0; color:#777;'>{val}</h2>
                             </div>
                             """, unsafe_allow_html=True)
             
             st.markdown("<br>", unsafe_allow_html=True)
 
-            # --- B. กราฟเส้น (Plotly) ---
+            # --- B. Plotly Graph ---
             df = results["graph"]
-            # ใช้ Template 'plotly_white' หรือ 'plotly_dark' หรือ 'ggplot2'
             fig = px.line(df, x=df.index, y=kw_list, 
-                          title=f"📈 แนวโน้มการค้นหา: {', '.join(kw_list)}",
+                          title=f"📈 เส้นกราฟแสดงการค้นหา: {', '.join(kw_list)}",
                           template="plotly_white", 
-                          color_discrete_sequence=px.colors.qualitative.Bold, # สีสดชัด
-                          labels={'value': 'Search Volume', 'date': 'Date', 'variable': 'Model'})
+                          color_discrete_sequence=px.colors.qualitative.Bold,
+                          labels={'value': 'ดัชนีความสนใจ (Interest)', 'date': 'วันที่', 'variable': 'รุ่นรถ'})
             
-            fig.update_traces(line=dict(width=3), mode='lines+markers') # เส้นหนา มีจุด
-            fig.update_layout(hovermode="x unified", height=450) # เวลาเอาเมาส์จ่อ จะขึ้นข้อมูลครบทุกเส้น
+            fig.update_traces(line=dict(width=3), mode='lines+markers')
+            fig.update_layout(hovermode="x unified", height=450, font=dict(family="Prompt"))
             st.plotly_chart(fig, use_container_width=True)
             
-            with st.expander("ดูตารางข้อมูลดิบ (Raw Data)"):
+            with st.expander("📂 ดูตารางข้อมูลดิบ (Export Data)"):
                 st.dataframe(df.sort_index(ascending=False))
 
-            # --- C. Insight เจาะลึก ---
+            # --- C. Insight ---
             st.markdown("---")
-            st.subheader("🔍 เจาะลึกพฤติกรรมลูกค้า (Insight)")
+            st.subheader("🔍 เจาะลึกความต้องการลูกค้า (Customer Intent)")
             
             if results["related"]:
                 related = results["related"]
                 cols = st.columns(len(kw_list))
                 for i, kw in enumerate(kw_list):
                     with cols[i]:
-                        st.info(f"**{kw}**")
+                        st.info(f"คนที่ค้นหา **{kw}** สนใจเรื่องนี้ด้วย:")
                         if kw in related and related[kw]:
                             rising = related[kw]['rising']
                             top = related[kw]['top']
                             
-                            tab1, tab2 = st.tabs(["🔥 มาแรง", "⭐ ยอดนิยม"])
+                            tab1, tab2 = st.tabs(["🔥 กำลังมาแรง", "⭐ ยอดนิยม"])
                             with tab1:
                                 if rising is not None:
                                     st.dataframe(rising.head(5)[['query', 'value']], hide_index=True)
                                 else:
-                                    st.caption("- ไม่มีข้อมูล -")
+                                    st.caption("- ไม่มีเทรนด์ใหม่ -")
                             with tab2:
                                 if top is not None:
                                     st.dataframe(top.head(5)[['query', 'value']], hide_index=True)
@@ -278,11 +321,10 @@ if 'run_triggered' in st.session_state and st.session_state.run_triggered:
                         else:
                             st.caption("- ไม่มีข้อมูล -")
             else:
-                 st.info("💡 หมายเหตุ: Google ไม่แสดง Insight สำหรับคำค้นหาที่มีปริมาณน้อย หรือช่วงเวลาสั้นเกินไป")
+                 st.info("💡 หมายเหตุ: ช่วงเวลานี้ข้อมูลน้อยเกินไป Google จึงไม่แสดง Insight เชิงลึก")
                  
         else:
             st.warning("⚠️ ไม่พบข้อมูลกราฟในช่วงเวลานี้ (ลองเปลี่ยนพื้นที่ หรือขยายช่วงเวลา)")
 
-# --- Footer Credits ---
-st.markdown("<div class='footer'>Developed by oofmakus</div>", unsafe_allow_html=True)
-
+# --- Footer ---
+st.markdown("<div class='footer'>AION Intelligent Dashboard | Developed by <b>oofmakus</b></div>", unsafe_allow_html=True)
